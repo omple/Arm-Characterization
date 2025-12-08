@@ -12,6 +12,7 @@ const int SERVO2_PIN = 10;
 // Link lengths (adjust to match your physical arm)
 const float a1 = 0.075;  // Length of first link
 const float a2 = 0.07;  // Length of second link
+const float o = 0.025;
 
 // Servo angle offsets and direction
 const float SERVO1_OFFSET = 90.0;
@@ -62,7 +63,8 @@ void loop() {
 
 void calculateDirectIK(float x1, float y1) {
   // Calculate a3 = distance from origin to target
-  float a3 = sqrt(x1*x1 + y1*y1);
+  float a31 = sqrt((x1-o)*(x1-o) + y1*y1);
+  float a32 = sqrt(x1*x1 + (y1-o)*(y1-o));
 
   // Check reachability
   if (a3 > (a1 + a2)) {
@@ -75,12 +77,13 @@ void calculateDirectIK(float x1, float y1) {
   // Calculate intermediate terms
   float a1_sq = a1 * a1;
   float a2_sq = a2 * a2;
-  float a3_sq = a3 * a3;
+  float a31_sq = a31 * a31;
+  float a32_sq = a32 * a32;
 
   float q1, p1;
 
-  q1 = atan(y1,x1) - arccos(a2_sq - a1_sq - a3_sq, -2 * a1 * a3);
-  p1 = atan(y1,x1) + arccos(a2_sq - a1_sq - a3_sq, -2 * a1 * a3);
+  q1 = atan(y1,x1-o) - arccos(a2_sq - a1_sq - a31_sq, -2 * a1 * a31);
+  p1 = atan(y1-o,x1) + arccos(a2_sq - a1_sq - a32_sq, -2 * a1 * a32);
 
   // Apply servo offsets and direction
   int servo1_angle = q1 + SERVO1_OFFSET;
