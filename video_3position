@@ -1,0 +1,200 @@
+#include <Servo.h>
+#include <math.h>
+#include <ctype.h>
+
+// ============= ARM GEOMETRY (mm) =============
+const float a1 = 92.2f;    // first link length
+const float a2 = 80.24f;   // second link length
+const float O  = 25.0f;    // offset o (mm)
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+static inline float deg2rad(float d){ return d * (M_PI / 180.0f); }
+static inline float rad2deg(float r){ return r * (180.0f / M_PI); }
+
+// ============= SERVO SETUP ====================
+// Servo on pin 7 controls base angle p1 (arm with pivot at (0,O))
+// Servo on pin 8 controls base angle q1 (arm with pivot at (O,0))
+
+const int PIN_P1 = 7;
+const int PIN_Q1 = 8;
+
+const int   DIR_P1 = +1;
+const int   DIR_Q1 = +1;
+const float OFF_P1 = 90.0f;   // adjust later if needed
+const float OFF_Q1 = 90.0f;
+
+const int SERVO_MIN = 0;
+const int SERVO_MAX = 180;
+
+Servo servoP1;
+Servo servoQ1;
+
+// ---------- Solve all four angles from GLOBAL target (xW,yW) ----------
+// Matches Desmos geometry exactly:
+//
+// Arm q: pivot s0 = (O, 0)  -> distance d1
+// Arm p: pivot w0 = (0, O)  -> distance d2
+bool solveAnglesWorld(float xW, float yW,
+                      float &p1_deg, float &p2_deg,
+                      float &q1_deg, float &q2_deg)
+{
+  // ---- Arm q (pivot at s0 = (O,0)) ----
+  float x1 = xW - O;     // e0.x - s0.x
+  float y1 = yW;         // e0.y - s0.y
+  float d1 = sqrtf(x1*x1 + y1*y1);
+
+  // ---- Arm p (pivot at w0 = (0,O)) ----
+  float x2 = xW;         // e0.x - w0.x
+  float y2 = yW - O;     // e0.y - w0.y
+  float d2 = sqrtf(x2*x2 + y2*y2);
+
+  // Both arms must be able to reach
+  if (d1 > (a1 + a2) || d1 < fabsf(a1 - a2)) return false;
+  if (d2 > (a1 + a2) || d2 < fabsf(a1 - a2)) return false;
+
+  // ---------- q-angles (elbow-down), pivot at (O,0) ----------
+  float t1_q = (a2*a2 - a1*a1 - d1*d1) / (-2.0f * a1 * d1);
+  float t2_q = (d1*d1 - a1*a1 - a2*a2) / (-2.0f * a1 * a2);
+
+  t1_q = fmaxf(-1.0f, fminf(1.0f, t1_q));
+  t2_q = fmaxf(-1.0f, fminf(1.0f, t2_q));
+
+  float atan_yx_q = atan2f(y1, x1);
+
+  float q1 = atan_yx_q - acosf(t1_q);   // your q1 equation
+  float q2 = M_PI      - acosf(t2_q);   // your q2 equation
+
+  // ---------- p-angles (elbow-up), pivot at (0,O) ----------
+  float t1_p = (a2*a2 - a1*a1 - d2*d2) / (-2.0f * a1 * d2);
+  float t2_p = (d2*d2 - a1*a1 - a2*a2) / (-2.0f * a1 * a2);
+
+  t1_p = fmaxf(-1.0f, fminf(1.0f, t1_p));
+  t2_p = fmaxf(-1.0f, fminf(1.0f, t2_p));
+
+  float atan_yx_p = atan2f(y2, x2);
+
+  float p1 = atan_yx_p + acosf(t1_p);   // your p1 equation
+  float p2 = M_PI      + acosf(t2_p);   // your p2 equation
+
+  // convert to degrees
+  p1_deg = rad2deg(p1);
+  p2_deg = rad2deg(p2);
+  q1_deg = rad2deg(q1);
+  q2_deg = rad2deg(q2);
+
+  return true;
+}
+
+// ---------- Move servos to p1 and q1 ----------
+void moveBases(float p1_deg, float q1_deg)
+{
+  int sP1 = (int)lroundf(DIR_P1 * p1_deg + OFF_P1);
+  int sQ1 = (int)lroundf(DIR_Q1 * q1_deg + OFF_Q1);
+
+  sP1 = constrain(sP1, SERVO_MIN, SERVO_MAX);
+  sQ1 = constrain(sQ1, SERVO_MIN, SERVO_MAX);
+
+  servoP1.write(sP1);
+  servoQ1.write(sQ1);
+
+  Serial.print("Servos -> p1 base: "); Serial.print(sP1);
+  Serial.print("°,  q1 base: ");        Serial.println(sQ1);
+}
+// ---------- Run 4-position sequence quickly ----------
+void runSequence() {
+  // Four target points in GLOBAL coordinates (mm)
+  const float targets[4][2] = {
+    {120.0f, 105.0f},
+    {137.0f, 126.0f},
+    {137.0f, 54.0f},
+    {93.0f, 126.0f}
+  };
+
+  const int cycles = 3;     // how many times to repeat full 4-point pattern
+  const int pause_ms = 200; // delay between moves (lower = faster)
+
+  for (int c = 0; c < cycles; ++c) {
+    Serial.print("\nCycle ");
+    Serial.println(c + 1);
+
+    for (int i = 0; i < 4; ++i) {
+      float xW = targets[i][0];
+      float yW = targets[i][1];
+
+      Serial.print("Target (");
+      Serial.print(xW, 2);
+      Serial.print(", ");
+      Serial.print(yW, 2);
+      Serial.println(") mm");
+
+      float p1, p2, q1, q2;
+      if (!solveAnglesWorld(xW, yW, p1, p2, q1, q2)) {
+        Serial.println("  -> Target unreachable, stopping sequence.");
+        return;
+      }
+
+      Serial.println("Angles in degrees:");
+      Serial.print("  Elbow-UP   (p1, p2): p1 = ");
+      Serial.print(p1, 2);
+      Serial.print("°,  p2 = ");
+      Serial.println(p2, 2);
+
+      Serial.print("  Elbow-DOWN (q1, q2): q1 = ");
+      Serial.print(q1, 2);
+      Serial.print("°,  q2 = ");
+      Serial.println(q2, 2);
+
+      // Move bases to p1 and q1
+      moveBases(p1, q1);
+
+      delay(pause_ms);
+    }
+  }
+
+  Serial.println("\n4-position sequence complete.");
+}
+
+// ---------- Prompt ----------
+void printPrompt() {
+  Serial.println();
+  Serial.println("'Q'");
+  Serial.println("  (137, 100) -> (137, 126) -> (137, 100)");
+}
+
+// ============= SETUP ==========================
+void setup() {
+  Serial.begin(115200);
+  servoP1.attach(PIN_P1);
+  servoQ1.attach(PIN_Q1);
+  delay(200);
+  printPrompt();
+}
+
+// ============= LOOP ===========================
+void loop() {
+  if (!Serial.available()) return;
+
+  // skip whitespace
+  while (Serial.available() && isspace(Serial.peek())) Serial.read();
+  if (!Serial.available()) return;
+
+  char mode = Serial.peek();
+
+  if (mode == 'Q' || mode == 'q') {
+    Serial.read();                  // consume 'Q'
+    while (Serial.available()) {    // clear rest of line
+      Serial.read();
+    }
+
+    Serial.println();
+    Serial.println("Starting 3-position sequence...");
+    runSequence();
+    printPrompt();
+  } else {
+    // Consume and ignore any other input
+    Serial.read();
+  }
+}
