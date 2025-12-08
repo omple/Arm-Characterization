@@ -123,11 +123,11 @@ def demo_trajectory():
 
     # Define trajectory (adjust based on your link lengths)
     trajectory = [
-        (15, 5),    # Position 1
-        (12, 10),   # Position 2
-        (8, 12),    # Position 3
-        (5, 10),    # Position 4
-        (10, 8),    # Position 5
+        (0.9, 0.9),    # Position 1
+        (0.9 + 0.1, 0.9),   # Position 2
+        (0.9 + 0.1, 0.9 + 0.1),    # Position 3
+        (0.9 - 0.1, 0.9 - 0.1),    # Position 4
+        (0.9, 0.9 - 0.1),    # Position 5
     ]
 
     print("\nSending trajectory...")
@@ -138,7 +138,7 @@ def demo_trajectory():
 
 def interactive_control():
     """Interactive control mode"""
-    port = '/dev/ttyACM0'  # Change this to match your system
+    port = 'COM4'  # Change this to match your system
 
     controller = ArmController(port=port, baudrate=9600)
     controller.interactive_mode()
