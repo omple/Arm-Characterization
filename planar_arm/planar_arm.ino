@@ -82,8 +82,8 @@ void calculateDirectIK(float x1, float y1) {
 
   float q1, p1;
 
-  q1 = atan(y1,x1-o) - arccos(a2_sq - a1_sq - a31_sq, -2 * a1 * a31);
-  p1 = atan(y1-o,x1) + arccos(a2_sq - a1_sq - a32_sq, -2 * a1 * a32);
+  q1 = atan(y1,x1-o) - acos(a2_sq - a1_sq - a31_sq, -2 * a1 * a31);
+  p1 = atan(y1-o,x1) + acos(a2_sq - a1_sq - a32_sq, -2 * a1 * a32);
 
   // Apply servo offsets and direction
   int servo1_angle = q1 + SERVO1_OFFSET;
