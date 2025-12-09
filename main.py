@@ -60,7 +60,7 @@ def demo_stream_square(port: str = 'COM12', baudrate: int = 9600, total_time_ms:
 	samples = square_right_defined(total_time_ms=total_time_ms, rate_hz=rate_hz)
 
 	if save_csv:
-		pg = PathGenerator(waypoints=[(137.0, 100.0), (137.0, 126.0), (111.0, 126.0), (111.0, 100.0)], closed=True)
+		pg = PathGenerator(waypoints=[(.137, 0.100), (0.137, 0.126), (0.111, 0.126), (0.111, 0.100)], closed=True)
 		pg.save_to_csv(save_csv, samples)
 		print(f"Saved samples to {save_csv}")
 
@@ -78,7 +78,7 @@ def demo_stream_square(port: str = 'COM12', baudrate: int = 9600, total_time_ms:
 
 def parse_args():
 	p = argparse.ArgumentParser(description='Arm Characterization utilities')
-	p.add_argument('--mode', choices=['write_csv', 'stream_square'], default='write_csv')
+	p.add_argument('--mode', choices=['write_csv', 'stream_square'], default='stream_square')
 	p.add_argument('--port', default='COM12', help='Serial port for streaming (e.g., COM3)')
 	p.add_argument('--baud', type=int, default=9600, help='Serial baud rate')
 	p.add_argument('--time_ms', type=float, default=4000.0, help='Total time for square path in ms')

@@ -98,10 +98,10 @@ def square_right_defined(total_time_ms: float, rate_hz: int = 100) -> List[Tuple
     Four corners are taken from the Arduino snippet: BR, TR, BL, TL
     and the square is traversed in the same order.
     """
-    BR_x, BR_y = 137.0, 100.0
-    TR_x, TR_y = 137.0, 126.0
-    BL_x, BL_y = 111.0, 100.0
-    TL_x, TL_y = 111.0, 126.0
+    BR_x, BR_y = .137, 0.100
+    TR_x, TR_y = .137, 0.126
+    BL_x, BL_y = 0.111, .100
+    TL_x, TL_y = 0.111, 0.126
 
     waypoints = [(BR_x, BR_y), (TR_x, TR_y), (TL_x, TL_y), (BL_x, BL_y)]
     pg = PathGenerator(waypoints=waypoints, closed=True)
