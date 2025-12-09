@@ -19,8 +19,8 @@ const int PIN_Q1 = 8;
 
 const int   DIR_P1 = +1;
 const int   DIR_Q1 = +1;
-const float OFF_P1 = 90.0f;
-const float OFF_Q1 = 90.0f;
+const float OFF_P1 = 0.0f;
+const float OFF_Q1 = 0.0f;
 
 const int SERVO_MIN = 0;
 const int SERVO_MAX = 180;
@@ -32,8 +32,8 @@ Servo servoQ1;
 // Inverse Kinematics Solver
 // --------------------------------------------------
 bool solveAnglesWorld(float xW, float yW,
-                      float &p1_deg, float &p2_deg,
-                      float &q1_deg, float &q2_deg)
+                      float &p1_deg,
+                      float &q1_deg)
 {
   float x1 = xW - O;
   float y1 = yW;
@@ -47,32 +47,23 @@ bool solveAnglesWorld(float xW, float yW,
   if (d2 > (a1 + a2) || d2 < fabsf(a1 - a2)) return false;
 
   float t1_q = (a2*a2 - a1*a1 - d1*d1) / (-2.0f * a1 * d1);
-  float t2_q = (d1*d1 - a1*a1 - a2*a2) / (-2.0f * a1 * a2);
 
   t1_q = constrain(t1_q, -1.0f, 1.0f);
-  t2_q = constrain(t2_q, -1.0f, 1.0f);
 
   float atan_yx_q = atan2f(y1, x1);
 
   float q1 = atan_yx_q - acosf(t1_q);
-  float q2 = M_PI - acosf(t2_q);
 
   float t1_p = (a2*a2 - a1*a1 - d2*d2) / (-2.0f * a1 * d2);
-  float t2_p = (d2*d2 - a1*a1 - a2*a2) / (-2.0f * a1 * a2);
 
   t1_p = constrain(t1_p, -1.0f, 1.0f);
-  t2_p = constrain(t2_p, -1.0f, 1.0f);
 
   float atan_yx_p = atan2f(y2, x2);
 
   float p1 = atan_yx_p + acosf(t1_p);
-  float p2 = M_PI + acosf(t2_p);
 
   p1_deg = rad2deg(p1);
-  p2_deg = rad2deg(p2);
   q1_deg = rad2deg(q1);
-  q2_deg = rad2deg(q2);
-
   return true;
 }
 

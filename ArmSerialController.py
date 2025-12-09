@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Python Serial Controller for 2-Link Planar Arm
 Sends (x, y) target positions to Arduino via serial communication
@@ -7,6 +6,7 @@ Sends (x, y) target positions to Arduino via serial communication
 import serial
 import time
 import sys
+from typing import List, Tuple
 
 class ArmController:
     def __init__(self, port='/dev/ttyACM0', baudrate=9600, timeout=1):
@@ -72,6 +72,46 @@ class ArmController:
             self.send_position(x, y)
             time.sleep(delay)
 
+    def stream_parametric_path(self, samples: List[Tuple[float, float, float]], wait_ack: bool = False, start_delay: float = 0.0) -> None:
+        """Stream a parametric path (t_ms, x, y) to the Arduino.
+
+        Args:
+            samples: List of tuples produced by `PathGenerator.generate_parametric_path`,
+                     where each tuple is (t_ms, x, y) and `t_ms` is milliseconds from start.
+            wait_ack: If True, wait for Arduino response after each sent point (uses `read_response`).
+            start_delay: Seconds to wait before starting the stream (useful to give Arduino time).
+        """
+        if not samples:
+            print("No samples to stream.")
+            return
+
+        # Start time in seconds (wall clock)
+        t0 = time.time() + float(start_delay)
+        print(f"Starting parametric stream ({len(samples)} samples) in {start_delay}s...")
+
+        for t_ms, x, y in samples:
+            target_time = t0 + (float(t_ms) / 1000.0)
+            now = time.time()
+            to_sleep = target_time - now
+            if to_sleep > 0:
+                time.sleep(to_sleep)
+
+            # Send the command without blocking read unless wait_ack is requested
+            command = f"{x},{y}\n"
+            try:
+                self.ser.write(command.encode('utf-8'))
+                print(f"Sent: ({x}, {y})  t={t_ms:.1f} ms")
+            except serial.SerialException as e:
+                print(f"Serial write error: {e}")
+                break
+
+            if wait_ack:
+                # read_response will block up to its timeout
+                self.read_response()
+            else:
+                # small pause to avoid flooding the serial buffer
+                time.sleep(0.001)
+
     def interactive_mode(self):
         """Interactive mode for manual position input"""
         print("\n=== Interactive Mode ===")
@@ -117,17 +157,17 @@ def demo_trajectory():
     # Linux: '/dev/ttyACM0', '/dev/ttyUSB0', etc.
     # macOS: '/dev/cu.usbmodem14101', etc.
 
-    port = '/dev/ttyACM0'  # Change this to match your system
+    port = 'COM12'  # Change this to match your system
 
     controller = ArmController(port=port, baudrate=9600)
 
     # Define trajectory (adjust based on your link lengths)
     trajectory = [
-        (0.9, 0.9),    # Position 1
-        (0.9 + 0.1, 0.9),   # Position 2
-        (0.9 + 0.1, 0.9 + 0.1),    # Position 3
-        (0.9 - 0.1, 0.9 - 0.1),    # Position 4
-        (0.9, 0.9 - 0.1),    # Position 5
+        (0.09, 0.09),    # Position 1
+        (0.09 + 0.05, 0.09),   # Position 2
+        (0.09 + 0.05, 0.09 + 0.05),    # Position 3
+        (0.09, 0.09),    # Position 4
+        (0.09, 0.09 + 0.05),    # Position 5
     ]
 
     print("\nSending trajectory...")
@@ -138,7 +178,7 @@ def demo_trajectory():
 
 def interactive_control():
     """Interactive control mode"""
-    port = 'COM4'  # Change this to match your system
+    port = 'COM12'  # Change this to match your system
 
     controller = ArmController(port=port, baudrate=9600)
     controller.interactive_mode()
