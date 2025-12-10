@@ -100,7 +100,7 @@ class ArmController:
             command = f"{x},{y}\n"
             try:
                 self.ser.write(command.encode('utf-8'))
-                print(f"Sent: ({x}, {y})  t={t_ms:.1f} ms")
+                #print(f"Sent: ({x}, {y})  t={t_ms:.1f} ms")
             except serial.SerialException as e:
                 print(f"Serial write error: {e}")
                 break
@@ -163,15 +163,15 @@ def demo_trajectory():
 
     # Define trajectory (adjust based on your link lengths)
     trajectory = [
-        (0.09, 0.09),    # Position 1
-        (0.09 + 0.05, 0.09),   # Position 2
-        (0.09 + 0.05, 0.09 + 0.05),    # Position 3
-        (0.09, 0.09),    # Position 4
-        (0.09, 0.09 + 0.05),    # Position 5
+        (0.08, 0.08),    # Position 1
+        (0.13, 0.08),   # Position 2
+        (0.13, 0.13),    # Position 3
+        (0.08, 0.13),    # Position 4
+        (0.08, 0.08),    # Position 5
     ]
 
     print("\nSending trajectory...")
-    controller.send_trajectory(trajectory, delay=2.0)
+    controller.send_trajectory(trajectory, delay=0.5)
 
     controller.close()
 
